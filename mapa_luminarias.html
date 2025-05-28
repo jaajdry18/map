@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mapa de Luminarias</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.ajax"></script>
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #map { height: 90vh; }
+    .filters {
+      padding: 10px;
+      background: #f4f4f4;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    select {
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="filters">
+  <label>POTENCIA:
+    <select id="filter-potencia">
+      <option value="">Todos</option>
+    </select>
+  </label>
+  <label>TECNOLOGÍA:
+    <select id="filter-tecnologia">
+      <option value="">Todos</option>
+    </select>
+  </label>
+  <label>TIPO DE DISPOSITIVO:
+    <select id="filter-tipo">
+      <option value="">Todos</option>
+    </select>
+  </label>
+  <label>TRANSFORMADOR:
+    <select id="filter-transformador">
+      <option value="">Todos</option>
+    </select>
+  </label>
+  <label>NODO:
+    <select id="filter-nodo">
+      <option value="">Todos</option>
+    </select>
+  </label>
+</div>
+
+<div id="map"></div>
+
+<script>
+  var map = L.map('map').setView([3.38, -76.33], 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map);
+
+  let allData = null;
+  let markersLayer = L.geoJSON(null, {
+    onEachFeature: function (feature, layer) {
+      const props = feature.properties;
+      let popup = "<b>CÓDIGO:</b> " + props['CODIGO DE LUMINARIA'] +
+                  "<br><b>POTENCIA:</b> " + props['POTENCIA'] +
+                  "<br><b>TECNOLOGÍA:</b> " + props['TECNOLOGIA'] +
+                  "<br><b>TIPO:</b> " + props['TIPO DE DISPOSITIVO'] +
+                  "<br><b>TRANSFORMADOR:</b> " + props['TRASFORMADOR'] +
+                  "<br><b>NODO:</b> " + props['NODO'];
+      layer.bindPopup(popup);
+    }
+  }).addTo(map);
+
+  fetch('luminarias.geojson')
+    .then(response => response.json())
+    .then(data => {
+      allData = data;
+      markersLayer.addData(allData);
+      populateFilters(data);
+    });
+
+  function populateFilters(data) {
+    const potenciaSet = new Set();
+    const tecnologiaSet = new Set();
+    const tipoSet = new Set();
+    const transformadorSet = new Set();
+    const nodoSet = new Set();
+
+    data.features.forEach(f => {
+      potenciaSet.add(f.properties['POTENCIA']);
+      tecnologiaSet.add(f.properties['TECNOLOGIA']);
+      tipoSet.add(f.properties['TIPO DE DISPOSITIVO']);
+      transformadorSet.add(f.properties['TRASFORMADOR']);
+      nodoSet.add(f.properties['NODO']);
+    });
+
+    fillSelect("filter-potencia", potenciaSet);
+    fillSelect("filter-tecnologia", tecnologiaSet);
+    fillSelect("filter-tipo", tipoSet);
+    fillSelect("filter-transformador", transformadorSet);
+    fillSelect("filter-nodo", nodoSet);
+
+    document.querySelectorAll("select").forEach(sel => {
+      sel.addEventListener("change", applyFilters);
+    });
+  }
+
+  function fillSelect(id, items) {
+    const select = document.getElementById(id);
+    [...items].sort().forEach(val => {
+      const opt = document.createElement("option");
+      opt.value = val;
+      opt.textContent = val;
+      select.appendChild(opt);
+    });
+  }
+
+  function applyFilters() {
+    const fPotencia = document.getElementById("filter-potencia").value;
+    const fTec = document.getElementById("filter-tecnologia").value;
+    const fTipo = document.getElementById("filter-tipo").value;
+    const fTrans = document.getElementById("filter-transformador").value;
+    const fNodo = document.getElementById("filter-nodo").value;
+
+    const filtered = {
+      ...allData,
+      features: allData.features.filter(f => {
+        return (!fPotencia || f.properties['POTENCIA'] === fPotencia) &&
+               (!fTec || f.properties['TECNOLOGIA'] === fTec) &&
+               (!fTipo || f.properties['TIPO DE DISPOSITIVO'] === fTipo) &&
+               (!fTrans || f.properties['TRASFORMADOR'] == fTrans) &&
+               (!fNodo || f.properties['NODO'] == fNodo);
+      })
+    };
+
+    markersLayer.clearLayers();
+    markersLayer.addData(filtered);
+  }
+</script>
+
+</body>
+</html>
