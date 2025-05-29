@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -8,6 +9,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.ajax"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.default.min.css" />
   <style>
     body { margin: 0; font-family: sans-serif; }
     #map { height: 90vh; }
@@ -20,6 +23,7 @@
     }
     select {
       padding: 5px;
+      min-width: 150px;
     }
   </style>
 </head>
@@ -27,29 +31,19 @@
 
 <div class="filters">
   <label>POTENCIA:
-    <select id="filter-potencia">
-      <option value="">Todos</option>
-    </select>
+    <select id="filter-potencia"></select>
   </label>
   <label>TECNOLOGÍA:
-    <select id="filter-tecnologia">
-      <option value="">Todos</option>
-    </select>
+    <select id="filter-tecnologia"></select>
   </label>
   <label>TIPO DE DISPOSITIVO:
-    <select id="filter-tipo">
-      <option value="">Todos</option>
-    </select>
+    <select id="filter-tipo"></select>
   </label>
   <label>TRANSFORMADOR:
-    <select id="filter-transformador">
-      <option value="">Todos</option>
-    </select>
+    <select id="filter-transformador"></select>
   </label>
   <label>NODO:
-    <select id="filter-nodo">
-      <option value="">Todos</option>
-    </select>
+    <select id="filter-nodo"></select>
   </label>
 </div>
 
@@ -108,10 +102,17 @@
     document.querySelectorAll("select").forEach(sel => {
       sel.addEventListener("change", applyFilters);
     });
+
+    // Inicializar Selectize en todos los filtros
+    $('select').selectize({ allowEmptyOption: true, sortField: 'text' });
   }
 
   function fillSelect(id, items) {
     const select = document.getElementById(id);
+    const optEmpty = document.createElement("option");
+    optEmpty.value = "";
+    optEmpty.textContent = "Todos";
+    select.appendChild(optEmpty);
     [...items].sort().forEach(val => {
       const opt = document.createElement("option");
       opt.value = val;
