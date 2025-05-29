@@ -84,7 +84,7 @@
   clusterGroup.addLayer(markersLayer);
   map.addLayer(clusterGroup);
 
-  fetch('https://<tu-usuario>.github.io/map/LUMINARIAS.geojson')
+  fetch('luminarias.geojson')
 
     .then(response => response.json())
     .then(data => {
