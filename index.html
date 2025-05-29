@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -30,6 +29,9 @@
 <body>
 
 <div class="filters">
+  <label>TRANSFORMADOR:
+    <select id="filter-transformador"></select>
+  </label>
   <label>POTENCIA:
     <select id="filter-potencia"></select>
   </label>
@@ -38,9 +40,6 @@
   </label>
   <label>TIPO DE DISPOSITIVO:
     <select id="filter-tipo"></select>
-  </label>
-  <label>TRANSFORMADOR:
-    <select id="filter-transformador"></select>
   </label>
   <label>NODO:
     <select id="filter-nodo"></select>
@@ -75,67 +74,86 @@
     .then(data => {
       allData = data;
       markersLayer.addData(allData);
-      populateFilters(data);
+      populateTransformadores();
+      setupFilterEvents();
     });
 
-  function populateFilters(data) {
-    const potenciaSet = new Set();
-    const tecnologiaSet = new Set();
-    const tipoSet = new Set();
-    const transformadorSet = new Set();
-    const nodoSet = new Set();
-
+  function uniqueValues(data, key, filterValues = {}) {
+    const values = new Set();
     data.features.forEach(f => {
-      potenciaSet.add(f.properties['POTENCIA']);
-      tecnologiaSet.add(f.properties['TECNOLOGIA']);
-      tipoSet.add(f.properties['TIPO DE DISPOSITIVO']);
-      transformadorSet.add(f.properties['TRASFORMADOR']);
-      nodoSet.add(f.properties['NODO']);
+      const props = f.properties;
+      let match = true;
+      for (const k in filterValues) {
+        if (filterValues[k] && props[k] != filterValues[k]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) values.add(props[key]);
     });
-
-    fillSelect("filter-potencia", potenciaSet);
-    fillSelect("filter-tecnologia", tecnologiaSet);
-    fillSelect("filter-tipo", tipoSet);
-    fillSelect("filter-transformador", transformadorSet);
-    fillSelect("filter-nodo", nodoSet);
-
-    document.querySelectorAll("select").forEach(sel => {
-      sel.addEventListener("change", applyFilters);
-    });
-
-    // Inicializar Selectize después de llenar los selects
-    $('select').selectize({ allowEmptyOption: true, sortField: 'text' });
+    return [...values].sort();
   }
 
-  function fillSelect(id, items) {
-    const select = document.getElementById(id);
-    const optEmpty = document.createElement("option");
-    optEmpty.value = "";
-    optEmpty.textContent = "Todos";
-    select.appendChild(optEmpty);
-    [...items].sort().forEach(val => {
-      const opt = document.createElement("option");
-      opt.value = val;
-      opt.textContent = val;
-      select.appendChild(opt);
+  function populateTransformadores() {
+    const select = $("#filter-transformador")[0];
+    select.innerHTML = "<option value=''>Todos</option>";
+    uniqueValues(allData, 'TRASFORMADOR').forEach(v => {
+      select.innerHTML += `<option value="${v}">${v}</option>`;
     });
+    $('select').selectize({ allowEmptyOption: true, sortField: 'text' });
+    applyFilters();
+  }
+
+  function updateDependentFilters() {
+    const fTrans = getSelected('filter-transformador');
+    const filterValues = {};
+    if (fTrans) filterValues['TRASFORMADOR'] = fTrans;
+
+    updateSelect("filter-potencia", "POTENCIA", filterValues);
+    updateSelect("filter-tecnologia", "TECNOLOGIA", filterValues);
+    updateSelect("filter-tipo", "TIPO DE DISPOSITIVO", filterValues);
+    updateSelect("filter-nodo", "NODO", filterValues);
+  }
+
+  function updateSelect(selectId, property, filterValues) {
+    const selectize = $(`#${selectId}`)[0].selectize;
+    selectize.clearOptions();
+    selectize.addOption({ value: '', text: 'Todos' });
+    uniqueValues(allData, property, filterValues).forEach(v => {
+      selectize.addOption({ value: v, text: v });
+    });
+    selectize.refreshOptions(false);
+  }
+
+  function setupFilterEvents() {
+    ['filter-transformador', 'filter-potencia', 'filter-tecnologia', 'filter-tipo', 'filter-nodo'].forEach(id => {
+      $(`#${id}`)[0].selectize.on('change', () => {
+        if (id === 'filter-transformador') updateDependentFilters();
+        applyFilters();
+      });
+    });
+  }
+
+  function getSelected(id) {
+    return $(`#${id}`)[0].selectize.getValue();
   }
 
   function applyFilters() {
-    const fPotencia = document.getElementById("filter-potencia").value;
-    const fTec = document.getElementById("filter-tecnologia").value;
-    const fTipo = document.getElementById("filter-tipo").value;
-    const fTrans = document.getElementById("filter-transformador").value;
-    const fNodo = document.getElementById("filter-nodo").value;
+    const fTrans = getSelected('filter-transformador');
+    const fPot = getSelected('filter-potencia');
+    const fTec = getSelected('filter-tecnologia');
+    const fTipo = getSelected('filter-tipo');
+    const fNodo = getSelected('filter-nodo');
 
     const filtered = {
       ...allData,
       features: allData.features.filter(f => {
-        return (!fPotencia || f.properties['POTENCIA'] === fPotencia) &&
-               (!fTec || f.properties['TECNOLOGIA'] === fTec) &&
-               (!fTipo || f.properties['TIPO DE DISPOSITIVO'] === fTipo) &&
-               (!fTrans || f.properties['TRASFORMADOR'] == fTrans) &&
-               (!fNodo || f.properties['NODO'] == fNodo);
+        const p = f.properties;
+        return (!fTrans || p['TRASFORMADOR'] == fTrans) &&
+               (!fPot || p['POTENCIA'] == fPot) &&
+               (!fTec || p['TECNOLOGIA'] == fTec) &&
+               (!fTipo || p['TIPO DE DISPOSITIVO'] == fTipo) &&
+               (!fNodo || p['NODO'] == fNodo);
       })
     };
 
