@@ -39,7 +39,7 @@
 <body>
 
 <div class="filters">
-  <label>TRANSFORMADOR:
+  <label>TRASFORMADOR:
     <select id="filter-transformador"></select>
   </label>
   <label>POTENCIA:
@@ -74,7 +74,7 @@
                    <b>POTENCIA:</b> ${props['POTENCIA']}<br>
                    <b>TECNOLOGÍA:</b> ${props['TECNOLOGIA']}<br>
                    <b>TIPO:</b> ${props['TIPO DE DISPOSITIVO']}<br>
-                   <b>TRANSFORMADOR:</b> ${props['TRANSFORMADOR']}<br>
+                   <b>TRASFORMADOR:</b> ${props['TRASFORMADOR']}<br>
                    <b>NODO:</b> ${props['NODO']}`;
       layer.bindPopup(popup);
     },
@@ -85,7 +85,6 @@
   map.addLayer(clusterGroup);
 
   fetch('luminarias.geojson')
-
     .then(response => response.json())
     .then(data => {
       allData = data;
@@ -120,7 +119,7 @@
 
   function updateAllFilters() {
     const selected = getAllSelected();
-    updateSelect("filter-transformador", "TRANSFORMADOR", selected);
+    updateSelect("filter-transformador", "TRASFORMADOR", selected);
     updateSelect("filter-potencia", "POTENCIA", selected);
     updateSelect("filter-tecnologia", "TECNOLOGIA", selected);
     updateSelect("filter-tipo", "TIPO DE DISPOSITIVO", selected);
@@ -150,7 +149,7 @@
 
   function getAllSelected() {
     return {
-      'TRANSFORMADOR': getSelected('filter-transformador'),
+      'TRASFORMADOR': getSelected('filter-transformador'),
       'POTENCIA': getSelected('filter-potencia'),
       'TECNOLOGIA': getSelected('filter-tecnologia'),
       'TIPO DE DISPOSITIVO': getSelected('filter-tipo'),
@@ -168,7 +167,7 @@
       ...allData,
       features: allData.features.filter(f => {
         const p = f.properties;
-        return (!selected['TRANSFORMADOR'] || p['TRANSFORMADOR'] == selected['TRANSFORMADOR']) &&
+        return (!selected['TRASFORMADOR'] || p['TRASFORMADOR'] == selected['TRASFORMADOR']) &&
                (!selected['POTENCIA'] || p['POTENCIA'] == selected['POTENCIA']) &&
                (!selected['TECNOLOGIA'] || p['TECNOLOGIA'] == selected['TECNOLOGIA']) &&
                (!selected['TIPO DE DISPOSITIVO'] || p['TIPO DE DISPOSITIVO'] == selected['TIPO DE DISPOSITIVO']) &&
@@ -183,4 +182,3 @@
 
 </body>
 </html>
-
