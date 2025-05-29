@@ -74,7 +74,7 @@
                    <b>POTENCIA:</b> ${props['POTENCIA']}<br>
                    <b>TECNOLOGÍA:</b> ${props['TECNOLOGIA']}<br>
                    <b>TIPO:</b> ${props['TIPO DE DISPOSITIVO']}<br>
-                   <b>TRASFORMADOR:</b> ${props['TRANSFORMADOR']}<br>
+                   <b>TRANSFORMADOR:</b> ${props['TRANSFORMADOR']}<br>
                    <b>NODO:</b> ${props['NODO']}`;
       layer.bindPopup(popup);
     },
@@ -84,7 +84,7 @@
   clusterGroup.addLayer(markersLayer);
   map.addLayer(clusterGroup);
 
-  fetch('luminarias.geojson')
+  fetch('LUMINARIAS.geojson')
     .then(response => response.json())
     .then(data => {
       allData = data;
