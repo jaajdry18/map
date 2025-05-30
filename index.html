@@ -4,17 +4,12 @@
   <title>Mapa de Luminarias</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.default.min.css" />
-
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.ajax"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
-
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.default.min.css" />
   <style>
     body { margin: 0; font-family: sans-serif; }
     #map { height: 90vh; }
@@ -39,7 +34,7 @@
 <body>
 
 <div class="filters">
-  <label>TRASFORMADOR:
+  <label>TRANSFORMADOR:
     <select id="filter-transformador"></select>
   </label>
   <label>POTENCIA:
@@ -66,30 +61,25 @@
   }).addTo(map);
 
   let allData = null;
-  let clusterGroup = L.markerClusterGroup();
   let markersLayer = L.geoJSON(null, {
     onEachFeature: function (feature, layer) {
       const props = feature.properties;
-      let popup = `<b>CÓDIGO:</b> ${props['CODIGO DE LUMINARIA']}<br>
-                   <b>POTENCIA:</b> ${props['POTENCIA']}<br>
-                   <b>TECNOLOGÍA:</b> ${props['TECNOLOGIA']}<br>
-                   <b>TIPO:</b> ${props['TIPO DE DISPOSITIVO']}<br>
-                   <b>TRASFORMADOR:</b> ${props['TRASFORMADOR']}<br>
-                   <b>NODO:</b> ${props['NODO']}`;
+      let popup = "<b>CÓDIGO:</b> " + props['CODIGO DE LUMINARIA'] +
+                  "<br><b>POTENCIA:</b> " + props['POTENCIA'] +
+                  "<br><b>TECNOLOGÍA:</b> " + props['TECNOLOGIA'] +
+                  "<br><b>TIPO:</b> " + props['TIPO DE DISPOSITIVO'] +
+                  "<br><b>TRANSFORMADOR:</b> " + props['TRASFORMADOR'] +
+                  "<br><b>NODO:</b> " + props['NODO'];
       layer.bindPopup(popup);
-    },
-    pointToLayer: (feature, latlng) => L.marker(latlng)
-  });
-
-  clusterGroup.addLayer(markersLayer);
-  map.addLayer(clusterGroup);
+    }
+  }).addTo(map);
 
   fetch('luminarias.geojson')
     .then(response => response.json())
     .then(data => {
       allData = data;
       markersLayer.addData(allData);
-      initFilters();
+      populateTransformadores();
       setupFilterEvents();
     });
 
@@ -109,30 +99,32 @@
     return [...values].sort();
   }
 
-  function initFilters() {
-    ['filter-transformador', 'filter-potencia', 'filter-tecnologia', 'filter-tipo', 'filter-nodo'].forEach(id => {
-      $(`#${id}`).selectize({ allowEmptyOption: true, sortField: 'text' });
+  function populateTransformadores() {
+    const select = $("#filter-transformador")[0];
+    select.innerHTML = "<option value=''>Todos</option>";
+    uniqueValues(allData, 'TRASFORMADOR').forEach(v => {
+      select.innerHTML += `<option value="${v}">${v}</option>`;
     });
-    updateAllFilters();
+    $('select').selectize({ allowEmptyOption: true, sortField: 'text' });
     applyFilters();
   }
 
-  function updateAllFilters() {
-    const selected = getAllSelected();
-    updateSelect("filter-transformador", "TRASFORMADOR", selected);
-    updateSelect("filter-potencia", "POTENCIA", selected);
-    updateSelect("filter-tecnologia", "TECNOLOGIA", selected);
-    updateSelect("filter-tipo", "TIPO DE DISPOSITIVO", selected);
-    updateSelect("filter-nodo", "NODO", selected);
+  function updateDependentFilters() {
+    const fTrans = getSelected('filter-transformador');
+    const filterValues = {};
+    if (fTrans) filterValues['TRASFORMADOR'] = fTrans;
+
+    updateSelect("filter-potencia", "POTENCIA", filterValues);
+    updateSelect("filter-tecnologia", "TECNOLOGIA", filterValues);
+    updateSelect("filter-tipo", "TIPO DE DISPOSITIVO", filterValues);
+    updateSelect("filter-nodo", "NODO", filterValues);
   }
 
   function updateSelect(selectId, property, filterValues) {
     const selectize = $(`#${selectId}`)[0].selectize;
-    const localFilter = { ...filterValues };
-    delete localFilter[property];
     selectize.clearOptions();
     selectize.addOption({ value: '', text: 'Todos' });
-    uniqueValues(allData, property, localFilter).forEach(v => {
+    uniqueValues(allData, property, filterValues).forEach(v => {
       selectize.addOption({ value: v, text: v });
     });
     selectize.refreshOptions(false);
@@ -141,20 +133,10 @@
   function setupFilterEvents() {
     ['filter-transformador', 'filter-potencia', 'filter-tecnologia', 'filter-tipo', 'filter-nodo'].forEach(id => {
       $(`#${id}`)[0].selectize.on('change', () => {
-        updateAllFilters();
+        if (id === 'filter-transformador') updateDependentFilters();
         applyFilters();
       });
     });
-  }
-
-  function getAllSelected() {
-    return {
-      'TRASFORMADOR': getSelected('filter-transformador'),
-      'POTENCIA': getSelected('filter-potencia'),
-      'TECNOLOGIA': getSelected('filter-tecnologia'),
-      'TIPO DE DISPOSITIVO': getSelected('filter-tipo'),
-      'NODO': getSelected('filter-nodo')
-    };
   }
 
   function getSelected(id) {
@@ -162,16 +144,21 @@
   }
 
   function applyFilters() {
-    const selected = getAllSelected();
+    const fTrans = getSelected('filter-transformador');
+    const fPot = getSelected('filter-potencia');
+    const fTec = getSelected('filter-tecnologia');
+    const fTipo = getSelected('filter-tipo');
+    const fNodo = getSelected('filter-nodo');
+
     const filtered = {
       ...allData,
       features: allData.features.filter(f => {
         const p = f.properties;
-        return (!selected['TRASFORMADOR'] || p['TRASFORMADOR'] == selected['TRASFORMADOR']) &&
-               (!selected['POTENCIA'] || p['POTENCIA'] == selected['POTENCIA']) &&
-               (!selected['TECNOLOGIA'] || p['TECNOLOGIA'] == selected['TECNOLOGIA']) &&
-               (!selected['TIPO DE DISPOSITIVO'] || p['TIPO DE DISPOSITIVO'] == selected['TIPO DE DISPOSITIVO']) &&
-               (!selected['NODO'] || p['NODO'] == selected['NODO']);
+        return (!fTrans || p['TRASFORMADOR'] == fTrans) &&
+               (!fPot || p['POTENCIA'] == fPot) &&
+               (!fTec || p['TECNOLOGIA'] == fTec) &&
+               (!fTipo || p['TIPO DE DISPOSITIVO'] == fTipo) &&
+               (!fNodo || p['NODO'] == fNodo);
       })
     };
 
