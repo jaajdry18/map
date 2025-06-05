@@ -4,11 +4,21 @@
   <title>Mapa de Luminarias</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <!-- MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- Selectize -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.default.min.css" />
+
   <style>
     body { margin: 0; font-family: sans-serif; }
     #map { height: 90vh; }
@@ -60,26 +70,16 @@
   }).addTo(map);
 
   let allData = null;
-  let markersLayer = L.geoJSON(null, {
-    onEachFeature: function (feature, layer) {
-      const props = feature.properties;
-      let popup = "<b>CÓDIGO:</b> " + (props['CODIGO DE LUMINARIA'] || '') +
-                  "<br><b>POTENCIA:</b> " + props['POTENCIA'] +
-                  "<br><b>TECNOLOGÍA:</b> " + props['TECNOLOGIA'] +
-                  "<br><b>TIPO:</b> " + props['TIPO DE DISPOSITIVO'] +
-                  "<br><b>TRANSFORMADOR:</b> " + props['TRASFORMADOR'] +
-                  "<br><b>NODO:</b> " + props['NODO'];
-      layer.bindPopup(popup);
-    }
-  }).addTo(map);
+  let clusterGroup = L.markerClusterGroup();
+  map.addLayer(clusterGroup);
 
-  fetch('luminarias.geojson') // Asegúrate de subir este archivo a la misma carpeta del HTML
+  fetch('luminarias.geojson')
     .then(response => response.json())
     .then(data => {
       allData = data;
-      markersLayer.addData(allData);
       populateTransformadores();
       setupFilterEvents();
+      applyFilters();
     });
 
   function uniqueValues(data, key, filterValues = {}) {
@@ -161,8 +161,25 @@
       })
     };
 
-    markersLayer.clearLayers();
-    markersLayer.addData(filtered);
+    clusterGroup.clearLayers();
+
+    const geoJsonLayer = L.geoJSON(filtered, {
+      onEachFeature: function (feature, layer) {
+        const props = feature.properties;
+        let popup = "<b>CÓDIGO:</b> " + props['CODIGO DE LUMINARIA'] +
+                    "<br><b>POTENCIA:</b> " + props['POTENCIA'] +
+                    "<br><b>TECNOLOGÍA:</b> " + props['TECNOLOGIA'] +
+                    "<br><b>TIPO:</b> " + props['TIPO DE DISPOSITIVO'] +
+                    "<br><b>TRANSFORMADOR:</b> " + props['TRASFORMADOR'] +
+                    "<br><b>NODO:</b> " + props['NODO'];
+        layer.bindPopup(popup);
+      },
+      pointToLayer: function (feature, latlng) {
+        return L.marker(latlng);
+      }
+    });
+
+    clusterGroup.addLayer(geoJsonLayer);
   }
 </script>
 
